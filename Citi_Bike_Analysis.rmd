@@ -1,0 +1,100 @@
+---
+title: "Citi Bike Analysis"
+author: "Saurabh Sankhe"
+date: "February 8, 2019"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r}
+#Loading the dataset
+mydata <- read.csv("C:/Users/Saurabh/Desktop/Sem-2 Course Documents/Multivariate Analysis/station_72.csv")
+
+#Printing the names of the variables
+names(mydata)
+
+#Printing the head of the dataframe
+head(mydata)
+
+#Printing the Summary of the dataset
+summary(mydata)
+
+#Printing the total number of rows with na values
+sum(rowSums(is.na(mydata)) > 0)
+```
+
+We can say from the above results that there are 26 rows with na values.
+
+```{r}
+#Printing the head of rows with NA values
+head(mydata[rowSums(is.na(mydata)) > 0, ])
+
+#Loading the required libraries
+library(mice)
+library(ggplot2)
+
+#Checking the pattern for null values
+md.pattern(mydata)
+```
+From the above plot we can say that we have 44 NA values in total and 26 rows has those NA values.
+```{r}
+# Extracting Date from datetime
+library(lubridate)
+library(plyr)
+mydata$datetime <- mdy_hm(mydata$datetime)
+mydata$newdate = as.POSIXct(strptime(mydata$datetime, format="%Y-%m-%d"))
+mydata$newdate = as.Date(mydata$newdate, "%m%d%Y")
+
+```
+
+```{r}
+#Plotting demand against time
+agg_demand=aggregate(demand~newdate,data=mydata,mean)
+ggplot(data = agg_demand) +
+  aes(x = newdate, y = demand) +
+  geom_line(color = "#0c4c8a") +
+  theme_minimal()+
+  xlab("Time")
+```
+
+It can be inferred from the above graph that demand fell in winter i.e from November till March and is high from April till october
+
+```{r}
+
+#Creating new matrix for temperature,humidity,windspeed,visibility
+agg_temp = aggregate(temperature~newdate, data=mydata,mean)
+agg_humidity=aggregate(humidity~newdate,data=mydata,mean,na.rm=TRUE)
+agg_windspeed=aggregate(windspeed~newdate,data=mydata,mean,na.rm=TRUE)
+agg_visibility=aggregate(visibility~newdate,data=mydata,mean, na.rm=TRUE)
+
+```
+
+```{r}
+
+#Plotting temperature,humidity,windspeed,visibility against time
+ggplot(data = agg_temp) + aes(x = newdate, y = temperature) + geom_line(color = "#0c4c8a") + theme_minimal() + xlab("Time")
+ggplot(data = agg_humidity, aes(newdate,humidity)) + geom_line(color = "#0c4c8a") + theme_minimal() + xlab("Time")
+ggplot(data = agg_windspeed, aes(newdate,windspeed)) + geom_line(color = "#0c4c8a") + theme_minimal() + xlab("Time")
+ggplot(data = agg_visibility, aes(newdate,visibility)) + geom_line(color = "#0c4c8a") + theme_minimal() + xlab("Time")
+
+
+```
+The above charts say that windspeed and humidity are independent of time whereas temperature starts falling from October till March and starts rising from April so we can say that temperature follows same pattern as demand and it will have highest impact on demand.  
+
+```{r}
+#Calculating correlation Matrix
+library(corrplot)
+library(RColorBrewer)
+corr_data <- mydata[,-c(1,8)]
+corr_data <- corr_data[!is.na(corr_data$demand)&!is.na(corr_data$temperature)&!is.na(corr_data$humidity)&!is.na(corr_data$windspeed)&!is.na(corr_data$visibility)&!is.na(corr_data$condition),]
+M <-cor(corr_data[,-6])
+corrplot(M, type="upper", order="hclust", col=brewer.pal(n=8, name="RdYlBu"))
+```
+
+From the above plot we can say that windspeed and humidity are highly correlated whereas demand i.e the output variable is highly coorelated with temperature,humidity and weakly coorelated with visibility and windspeed.
+
+
+
+
